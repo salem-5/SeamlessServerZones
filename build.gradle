@@ -1,0 +1,74 @@
+plugins {
+    id 'java'
+    id 'eclipse'
+    id "org.jetbrains.gradle.plugin.idea-ext" version "1.0.1"
+    id 'io.github.goooler.shadow' version '8.1.7'
+}
+
+group = 'info.preva1l'
+version = '1.0'
+
+repositories {
+    mavenCentral()
+    maven {
+        name = "papermc-repo"
+        url = "https://repo.papermc.io/repository/maven-public/"
+    }
+    maven {
+        name = "elytrium-repo"
+        url = "https://maven.elytrium.net/repo/"
+    }
+}
+
+dependencies {
+    implementation("de.exlll:configlib-yaml:4.5.0")
+    compileOnly 'org.projectlombok:lombok:1.18.34'
+    annotationProcessor 'org.projectlombok:lombok:1.18.34'
+    compileOnly "com.velocitypowered:velocity-api:3.3.0-SNAPSHOT"
+    compileOnly "com.velocitypowered:velocity-proxy:3.3.0-SNAPSHOT"
+    compileOnly 'io.netty:netty-all:4.1.24.Final'
+
+    annotationProcessor "com.velocitypowered:velocity-api:3.3.0-SNAPSHOT"
+}
+
+shadowJar {
+    relocate 'de.exlll.configlib', 'info.preva1l.seamlessserverzones.libs.config'
+    archiveClassifier.set("f")
+}
+
+def targetJavaVersion = 17
+java {
+    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
+    sourceCompatibility = javaVersion
+    targetCompatibility = javaVersion
+    if (JavaVersion.current() < javaVersion) {
+        toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+
+    if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
+        options.release.set(targetJavaVersion)
+    }
+}
+
+def templateSource = file('src/main/templates')
+def templateDest = layout.buildDirectory.dir('generated/sources/templates')
+def generateTemplates = tasks.register('generateTemplates', Copy) { task ->
+    def props = [
+            'version': project.version
+    ]
+    task.inputs.properties props
+
+    task.from templateSource
+    task.into templateDest
+    task.expand props
+}
+jar.dependsOn shadowJar
+
+sourceSets.main.java.srcDir(generateTemplates.map { it.outputs })
+
+rootProject.idea.project.settings.taskTriggers.afterSync generateTemplates
+project.eclipse.synchronizationTasks(generateTemplates)
