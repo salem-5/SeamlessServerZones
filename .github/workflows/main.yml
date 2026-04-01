@@ -1,9 +1,14 @@
 name: Build Velocity Plugin
+
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for manual build'
+        required: false
+        default: 'Manual trigger'
 jobs:
   build:
     runs-on: ubuntu-latest
